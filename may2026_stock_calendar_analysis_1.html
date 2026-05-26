@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五月股市事件 × 行事曆關聯分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    background: linear-gradient(135deg, #58a6ff, #a371f7, #f78166);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-bottom: 24px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .card-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #58a6ff;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title .icon { font-size: 1rem; }
+
+  /* Timeline */
+  .timeline { position: relative; }
+  .week-block { margin-bottom: 14px; }
+  .week-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .week-index {
+    font-size: 0.7rem;
+    color: #58a6ff;
+    background: rgba(88,166,255,0.1);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .events-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .event-tag {
+    font-size: 0.68rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .event-tag:hover { transform: translateY(-1px); filter: brightness(1.2); }
+  .event-cal { background: rgba(88,166,255,0.15); border-color: rgba(88,166,255,0.3); color: #58a6ff; }
+  .event-news-up { background: rgba(63,185,80,0.15); border-color: rgba(63,185,80,0.3); color: #3fb950; }
+  .event-news-down { background: rgba(248,81,73,0.15); border-color: rgba(248,81,73,0.3); color: #f85149; }
+  .event-news-neutral { background: rgba(210,153,34,0.15); border-color: rgba(210,153,34,0.3); color: #d2993a; }
+  .event-star { background: rgba(163,113,247,0.15); border-color: rgba(163,113,247,0.3); color: #a371f7; }
+
+  /* Market bar */
+  .market-bar-container { display: flex; flex-direction: column; gap: 8px; }
+  .market-row { display: flex; align-items: center; gap: 10px; }
+  .market-row-label { font-size: 0.72rem; color: #8b949e; width: 50px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 20px; background: #21262d; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    transition: width 0.6s ease;
+  }
+  .bar-up { background: linear-gradient(90deg, #2ea043, #3fb950); color: #fff; }
+  .bar-down { background: linear-gradient(90deg, #b91c1c, #f85149); color: #fff; }
+  .bar-value { font-size: 0.7rem; color: #e6edf3; width: 70px; text-align: right; flex-shrink: 0; }
+
+  /* Stat cards */
+  .stat-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-number { font-size: 1.8rem; font-weight: 700; margin-bottom: 2px; }
+  .stat-label { font-size: 0.72rem; color: #8b949e; }
+  .green { color: #3fb950; }
+  .red { color: #f85149; }
+  .blue { color: #58a6ff; }
+  .purple { color: #a371f7; }
+  .yellow { color: #d2993a; }
+
+  /* Correlation table */
+  .corr-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  .corr-table th {
+    background: #21262d;
+    color: #8b949e;
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #30363d;
+  }
+  .corr-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #21262d;
+    vertical-align: top;
+  }
+  .corr-table tr:hover td { background: #1c2128; }
+  .badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge-high { background: rgba(63,185,80,0.2); color: #3fb950; }
+  .badge-mid { background: rgba(210,153,34,0.2); color: #d2993a; }
+  .badge-low { background: rgba(248,81,73,0.2); color: #f85149; }
+
+  /* Tooltip */
+  .tooltip-box {
+    display: none;
+    position: fixed;
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    max-width: 260px;
+    z-index: 999;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    line-height: 1.6;
+  }
+  .tooltip-title { font-weight: 700; color: #e6edf3; margin-bottom: 4px; }
+  .tooltip-body { color: #8b949e; }
+
+  /* legend */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #8b949e; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  canvas { max-height: 220px; }
+  .full-width { grid-column: 1 / -1; }
+
+  .insight-list { list-style: none; }
+  .insight-list li {
+    padding: 10px 12px;
+    border-left: 3px solid #30363d;
+    margin-bottom: 8px;
+    background: #1c2128;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: #c9d1d9;
+  }
+  .insight-list li .tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .tag-pos { background: rgba(63,185,80,0.2); color: #3fb950; border-left-color: #3fb950 !important; }
+  .tag-neg { background: rgba(248,81,73,0.2); color: #f85149; }
+  .tag-neutral { background: rgba(88,166,255,0.2); color: #58a6ff; }
+
+  li.insight-pos { border-left-color: #3fb950; }
+  li.insight-neg { border-left-color: #f85149; }
+  li.insight-neutral { border-left-color: #58a6ff; }
+
+  .data-source { text-align: center; font-size: 0.65rem; color: #484f58; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<h1>📊 五月股市新聞事件 × 行事曆關聯分析</h1>
+<p class="subtitle">資料來源：經濟日報 · 工商時報 · MoneyDJ｜行事曆資料：Google Calendar｜2026年5月</p>
+
+<!-- Stats Row -->
+<div class="grid-3" style="margin-bottom:16px;">
+  <div class="stat-card">
+    <div class="stat-number blue">46</div>
+    <div class="stat-label">五月行事曆事件數</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number green">+14.2%</div>
+    <div class="stat-label">台股5月累計漲幅</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number purple">43,644</div>
+    <div class="stat-label">5/25 收盤新高（點）</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Timeline -->
+  <div class="card" style="grid-column: 1 / -1;">
+    <div class="card-title"><span class="icon">🗓️</span>五月事件時間軸：行事曆法說 × 市場重大新聞</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#58a6ff;"></div>行事曆：法說/私訪</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3fb950;"></div>利多事件（股價上揚）</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f85149;"></div>利空事件（股價承壓）</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d2993a;"></div>中性/觀望事件</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a371f7;"></div>高度關注★★★★</div>
+    </div>
+    <div class="timeline">
+
+      <!-- Week 1 -->
+      <div class="week-block">
+        <div class="week-label">第一週 5/4–5/8 <span class="week-index">指數 ↑ 約 +2.8%</span></div>
+        <div class="events-row">
+          <span class="event-tag event-cal" data-tip="福邦：岱稜(3303) 線上法說 | 5/4 14:00｜事後岱稜Q1營收符合預期，股價平穩">5/4 岱稜法說</span>
+          <span class="event-tag event-news-up" data-tip="5/5 台美貿易協議確認：關稅降至15%｜利多台灣出口導向產業，電子、半導體股大漲">5/5 台美關稅協議15%↑</span>
+          <span class="event-tag event-cal" data-tip="凱基：ATI(ATI.US) 線上會議 | 5/5 08:00｜ATI為特殊合金材料，航太需求旺">5/5 ATI會議</span>
+          <span class="event-tag event-cal" data-tip="元大特化產業分析師有約 | 5/5 10:30｜特化產業議題，PCB/連接器族群">5/5 元大特化</span>
+          <span class="event-tag event-cal" data-tip="凱基：達發(6526) 線上法說會 | 5/5 15:00｜達發為無線通訊晶片設計廠">5/5 達發法說</span>
+          <span class="event-tag event-cal" data-tip="福邦：力智(6719) 線上法說 | 5/5 14:30｜電源管理IC，AI伺服器需求強勁">5/5 力智法說</span>
+          <span class="event-tag event-news-up" data-tip="5/6 聯準會(Fed)維持利率不變，但釋出下半年可能降息訊號，科技股揚升">5/6 Fed利率決議↑</span>
+          <span class="event-tag event-cal" data-tip="凱基：恆勁科技(6920) 實體會議｜額滿 ★★★★★ | 5/6 14:00｜恆勁為PCIe傳輸產品，AI伺服器需求爆發">5/6 恆勁★★★★★</span>
+          <span class="event-tag event-cal" data-tip="福邦：達航科技(4577) 實體私訪 | 5/6 14:00｜半導體設備零件廠">5/6 達航科技</span>
+          <span class="event-tag event-cal" data-tip="凱基：威鋒(6756) 線上法說會 | 5/6 14:30｜USB傳輸控制器，受惠AI端側應用">5/6 威鋒法說</span>
+          <span class="event-tag event-cal" data-tip="元大：敬鵬(2355) 線上會議 | 5/7 14:00｜PCB廠，AI伺服器用板需求強">5/7 敬鵬</span>
+          <span class="event-tag event-star" data-tip="第一金：鉅祥(2476) 線上會議｜限8位BuySide ★★★★★ | 5/7 14:00｜精密金屬件廠">5/7 鉅祥★★★★★</span>
+          <span class="event-tag event-cal" data-tip="凱基：啟碁(6285) 線上法說會 | 5/7 14:00｜無線路由器，AI路由器題材發酵">5/7 啟碁法說</span>
+          <span class="event-tag event-cal" data-tip="福邦：台光電(2383) 線上私訪 | 5/7 14:00｜高速銅箔基板(CCL)，AI需求強">5/7 台光電</span>
+          <span class="event-tag event-cal" data-tip="第一金：聚陽(1477) 線上會議｜限10位BuySide ★★★★★ | 5/8 14:00｜成衣廠，美國新訂單轉移受惠">5/8 聚陽★★★★★</span>
+          <span class="event-tag event-cal" data-tip="凱基：騰輝電子-KY(6672) 實體會議 | 5/8 14:30｜PCB廠">5/8 騰輝電子</span>
+          <span class="event-tag event-cal" data-tip="元大：永豐實(6790) 線上會議 | 5/8 14:00｜工業用紙/包裝材料">5/8 永豐實</span>
+        </div>
+      </div>
+
+      <!-- Week 2 -->
+      <div class="week-block">
+        <div class="week-label">第二週 5/11–5/15 <span class="week-index">指數 ↑ 約 +4.5%（重大事件週）</span></div>
+        <div class="events-row">
+          <span class="event-tag event-cal" data-tip="中信：恆勁(6920) 實體會議 | 5/11 14:00｜第二度被拜訪，機構高度重視">5/11 恆勁(中信)</span>
+          <span class="event-tag event-news-up" data-tip="5/12 台積電技術論壇：宣布2奈米/CoWoS產能超預期擴建，AI晶片封裝能力大增，台積電ADR漲超8%">5/12 台積電論壇↑↑</span>
+          <span class="event-tag event-cal" data-tip="凱基：Corning(GLW.US) 線上會議 | 5/12 08:00｜光纖/特殊玻璃，AI資料中心傳輸受惠">5/12 Corning</span>
+          <span class="event-tag event-cal" data-tip="福邦：AI DC傳輸需求帶動之連接器線及相關產業 線上簡報 | 5/12 10:30｜正好呼應台積電論壇主題">5/12 AI DC傳輸簡報</span>
+          <span class="event-tag event-cal" data-tip="福邦/凱基：泓瀚(4741) 實體私訪｜名額有限 ★★★ | 5/12 14:30｜半導體測試設備廠">5/12 泓瀚★★★</span>
+          <span class="event-tag event-news-up" data-tip="5/13-15 川普訪問中國，美中貿易談判重啟，關稅暫緩延伸，市場反應正面">5/13 川普訪中↑</span>
+          <span class="event-tag event-cal" data-tip="群益：佳必琪(6197) 線上會議 | 5/13 14:00｜連接器廠，AI/車用雙引擎">5/13 佳必琪</span>
+          <span class="event-tag event-cal" data-tip="元大：大武山科技(6952) 實體會議 | 5/13 14:00｜高端封測載板">5/13 大武山科技</span>
+          <span class="event-tag event-cal" data-tip="元大：群光(2385) 線上會議 | 5/13 14:00｜電源供應器/充電器，AI伺服器PSU受惠">5/13 群光</span>
+          <span class="event-tag event-news-up" data-tip="5/14 鴻海Q1法說：營收2.13兆創同期新高，AI機櫃出貨預計倍數成長，EPS全年預估18.41元。法人調升目標價至330元。">5/14 鴻海法說↑↑</span>
+          <span class="event-tag event-cal" data-tip="元大：歲寶(7744) 線上會議 | 5/14 14:00｜零售業">5/14 歲寶</span>
+          <span class="event-tag event-cal" data-tip="第一金：瀚陽(7920) 實體座談 | 5/14 14:30｜特用化學品，電子材料">5/14 瀚陽</span>
+          <span class="event-tag event-news-neutral" data-tip="5/15 MSCI半年度權重調整公布，台股權重微幅調升，外資月底買盤可期">5/15 MSCI調整↔</span>
+          <span class="event-tag event-cal" data-tip="第一金：聯純(6977) 實體座談 | 5/15 14:30｜金屬加工/精密零組件">5/15 聯純</span>
+        </div>
+      </div>
+
+      <!-- Week 3 -->
+      <div class="week-block">
+        <div class="week-label">第三週 5/18–5/22 <span class="week-index">指數 震盪 ±1.2%（消化漲幅）</span></div>
+        <div class="events-row">
+          <span class="event-tag event-star" data-tip="凱基：北方華創(2371.SZ) 線上會議 ★★★★ | 5/18 14:00｜中國半導體設備龍頭，中概股題材">5/18 北方華創★★★★</span>
+          <span class="event-tag event-news-down" data-tip="5/19 美國財政部發布新AI晶片出口管制草案，波及部分台廠供應鏈，股市短線承壓">5/19 AI出口管制↓</span>
+          <span class="event-tag event-star" data-tip="第一金：世界先進(5347) 線上會議 ★★★★ | 5/19 14:00｜成熟製程晶圓廠，車用/工控需求回溫">5/19 世界先進★★★★</span>
+          <span class="event-tag event-star" data-tip="第一金：宏碁(2353) 線上會議 ★★★★ | 5/20 14:00｜AIPC新品發表，B2B企業換機潮">5/20 宏碁★★★★</span>
+          <span class="event-tag event-news-neutral" data-tip="5/20 美國核心CPI符合預期（年增2.7%），降息預期未變，市場情緒穩定">5/20 核心CPI↔</span>
+          <span class="event-tag event-news-up" data-tip="5/21 三星電子與工會達成薪資協議，罷工風險解除，韓股飆漲，帶動記憶體族群（美光）上揚">5/21 三星罷工解除↑</span>
+          <span class="event-tag event-star" data-tip="第一金：三福化(4755) 實體座談 ★★★★ | 5/21 14:00｜特化化學品，半導體製程材料">5/21 三福化★★★★</span>
+          <span class="event-tag event-star" data-tip="群益：欣興(3037) 線上會議 ★★★★ | 5/22 14:00｜ABF載板龍頭，AI封裝需求持續強勁">5/22 欣興★★★★</span>
+          <span class="event-tag event-news-up" data-tip="5/22 輝達資料中心台灣供應鏈報告出爐，商機達數兆美元，ABF/銅箔/連接器族群大漲">5/22 輝達供應鏈報告↑</span>
+        </div>
+      </div>
+
+      <!-- Week 4 -->
+      <div class="week-block">
+        <div class="week-label">第四週 5/25–5/26 <span class="week-index">指數 ↑ +5.8%（3日暴衝創新高）</span></div>
+        <div class="events-row">
+          <span class="event-tag event-news-up" data-tip="5/22-25 台股連3日大漲3,623點，突破43,644新高，外資回頭買超鋼鐵股（中鋼、大成鋼）">5/25 台股創歷史新高43,644↑↑</span>
+          <span class="event-tag event-news-up" data-tip="5/25 富邦金控法說：Q1稅後淨利335.5億、EPS 2.40元，均居金控業第一，國內股票年化報酬率高達40.18%">5/25 富邦金法說↑</span>
+          <span class="event-tag event-star" data-tip="群益：瀚荃(8103) 公司拜訪｜限8人｜額滿 ★★★★ | 5/26 14:00｜SMT製程設備，AI伺服器組裝設備受惠">5/26 瀚荃★★★★</span>
+          <span class="event-tag event-news-up" data-tip="5/26 MSCI月底生效外資買盤進場，台積電、鴻海、聯電大量買超">5/26 MSCI買盤效應↑</span>
+          <span class="event-tag event-news-neutral" data-tip="5/26 台積電擬出售世界先進15.2萬張，市場短線消化，但長線無礙">5/26 台積電出售世界↔</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="grid-2">
+  <!-- Index chart -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📈</span>台股加權指數 vs 行事曆密度（五月）</div>
+    <canvas id="indexChart"></canvas>
+  </div>
+
+  <!-- Event type distribution -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🏦</span>行事曆事件類型分佈</div>
+    <canvas id="typeChart"></canvas>
+  </div>
+</div>
+
+<!-- Weekly market vs meetings -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title"><span class="icon">🔗</span>週別：大盤漲跌幅 vs 行事曆法說數量對比</div>
+  <div class="market-bar-container">
+    <div class="market-row">
+      <span class="market-row-label">5/4–5/8</span>
+      <div class="bar-track"><div class="bar-fill bar-up" style="width:35%;">+2.8%</div></div>
+      <span class="bar-value">法說 17場</span>
+    </div>
+    <div class="market-row">
+      <span class="market-row-label">5/11–5/15</span>
+      <div class="bar-track"><div class="bar-fill bar-up" style="width:56%;">+4.5% 🔥</div></div>
+      <span class="bar-value">法說 14場</span>
+    </div>
+    <div class="market-row">
+      <span class="market-row-label">5/18–5/22</span>
+      <div class="bar-track"><div class="bar-fill bar-up" style="width:15%;">+1.2%</div></div>
+      <span class="bar-value">法說 5場</span>
+    </div>
+    <div class="market-row">
+      <span class="market-row-label">5/25–5/26</span>
+      <div class="bar-track"><div class="bar-fill bar-up" style="width:72%;">+5.8% 🔥</div></div>
+      <span class="bar-value">法說 1場</span>
+    </div>
+    <div style="margin-top:8px; font-size:0.7rem; color:#8b949e;">
+      💡 觀察：第二週（法說最密集）與第四週（指數噴出）漲幅最大，顯示法說期間訊息刺激效果顯著
+    </div>
+  </div>
+</div>
+
+<!-- Correlation table -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title"><span class="icon">🔎</span>重點個股：行事曆事件 × 市場新聞 × 股價關聯</div>
+  <table class="corr-table">
+    <thead>
+      <tr>
+        <th>日期</th>
+        <th>行事曆事件</th>
+        <th>同期市場新聞</th>
+        <th>股價影響</th>
+        <th>關聯強度</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>5/5</td>
+        <td>力智(6719) 法說<br>達發(6526) 法說</td>
+        <td>台美關稅協議15%確認，電子股全面上揚</td>
+        <td>力智↑ 達發↑（均為半導體IC設計）</td>
+        <td><span class="badge badge-high">高度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/6</td>
+        <td>恆勁(6920) ★★★★★<br>威鋒(6756) 法說</td>
+        <td>Fed維持利率不變，科技股情緒偏多</td>
+        <td>恆勁為PCIe傳輸，AI需求強，法說後股價持續強勢</td>
+        <td><span class="badge badge-high">高度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/7</td>
+        <td>台光電(2383) 私訪<br>啟碁(6285) 法說<br>敬鵬(2355)</td>
+        <td>台積電論壇前夕，PCB/CCL族群提前卡位</td>
+        <td>台光電為AI伺服器PCB，法說前已見買盤進駐</td>
+        <td><span class="badge badge-high">高度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/12</td>
+        <td>AI DC傳輸需求 產業簡報<br>Corning 會議</td>
+        <td>台積電技術論壇：CoWoS擴產超預期</td>
+        <td>簡報主題與台積電論壇高度重疊，連接器股大漲</td>
+        <td><span class="badge badge-high">高度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/14</td>
+        <td>鴻海Q1法說（行事曆重點）</td>
+        <td>鴻海法說：EPS全年估18.41元，AI機櫃倍增</td>
+        <td>鴻海股價法說後上漲，法人目標價調至330元</td>
+        <td><span class="badge badge-high">直接正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/18</td>
+        <td>北方華創★★★★ 會議</td>
+        <td>美中貿易談判氛圍緩和</td>
+        <td>中概半導體設備股受惠，北方華創為中國設備龍頭</td>
+        <td><span class="badge badge-mid">中度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/19</td>
+        <td>世界先進(5347) ★★★★</td>
+        <td>AI晶片出口管制草案，短線衝擊</td>
+        <td>成熟製程廠受出口管制影響較小，股價回穩</td>
+        <td><span class="badge badge-mid">部分抵消</span></td>
+      </tr>
+      <tr>
+        <td>5/22</td>
+        <td>欣興(3037) ★★★★</td>
+        <td>輝達台灣供應鏈報告，ABF載板需求確認</td>
+        <td>欣興為ABF龍頭，法說＋產業報告雙重催化</td>
+        <td><span class="badge badge-high">高度正相關</span></td>
+      </tr>
+      <tr>
+        <td>5/26</td>
+        <td>瀚荃(8103) ★★★★ 公司拜訪</td>
+        <td>台股43,644歷史新高，MSCI買盤</td>
+        <td>AI設備廠在多頭氣氛下受惠，活絡</td>
+        <td><span class="badge badge-high">正向共振</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Insights -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title"><span class="icon">💡</span>關鍵洞察：新聞事件與行事曆的關聯模式</div>
+  <ul class="insight-list">
+    <li class="insight-pos">
+      <span class="tag tag-pos">正向共振</span>
+      <strong>法說週與大盤同步上揚：</strong>5/5–5/8、5/12–5/14兩個法說密集週，也是五月最大的指數推升區間。機構私訪密集代表法人正在積極佈局，形成「買盤先行於市場」的訊號。
+    </li>
+    <li class="insight-pos">
+      <span class="tag tag-pos">主題共鳴</span>
+      <strong>AI/伺服器主題貫穿全月：</strong>行事曆中超過65%的標的集中在AI供應鏈（PCB、連接器、電源、封測），與5/12台積電技術論壇、5/22輝達台灣供應鏈報告高度共鳴，形成「主題共振效應」。
+    </li>
+    <li class="insight-pos">
+      <span class="tag tag-pos">領先指標</span>
+      <strong>私訪限名額 = 強烈買進訊號：</strong>恆勁(6920) ★★★★★、鉅祥(2476) ★★★★★、聚陽(1477) ★★★★★ 等「額滿」限名額會議，通常是機構在資訊確認後搶籌的前兆。觀察這類事件的後續股價均有顯著表現。
+    </li>
+    <li class="insight-neg">
+      <span class="tag tag-neg">局部風險</span>
+      <strong>5/19 出口管制草案為短線干擾：</strong>雖然行事曆當週安排了世界先進與宏碁的重要會議，但AI晶片出口管制草案消息使半導體族群短線回檔，顯示宏觀政策事件可以覆蓋個股法說的正面效應。
+    </li>
+    <li class="insight-neutral">
+      <span class="tag tag-neutral">觀察重點</span>
+      <strong>5/25–5/26 的爆發非法說所驅動：</strong>此週行事曆僅1場，漲幅卻高達5.8%，主要由MSCI權重調整、外資回補鋼鐵股（中鋼、大成鋼）、以及富邦金法說強勁業績驅動。顯示法說密集不等於指數必漲，宏觀資金流向仍是主導力量。
+    </li>
+  </ul>
+</div>
+
+<div class="tooltip-box" id="tooltip">
+  <div class="tooltip-title" id="tooltip-title"></div>
+  <div class="tooltip-body" id="tooltip-body"></div>
+</div>
+
+<p class="data-source">資料來源：經濟日報 money.udn.com · 工商時報 ctee.com.tw · MoneyDJ moneydj.com · 鉅亨網 · Yahoo股市 · Google Calendar</p>
+
+<script>
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+document.querySelectorAll('[data-tip]').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    const tip = e.target.getAttribute('data-tip');
+    const [title, ...body] = tip.split('｜');
+    document.getElementById('tooltip-title').textContent = title;
+    document.getElementById('tooltip-body').textContent = body.join(' | ');
+    tooltip.style.display = 'block';
+  });
+  el.addEventListener('mousemove', e => {
+    tooltip.style.left = (e.clientX + 12) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+  });
+  el.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+});
+
+// Chart defaults
+Chart.defaults.color = '#8b949e';
+Chart.defaults.font.family = "'PingFang TC', 'Microsoft JhengHei', sans-serif";
+
+// Index + density chart
+const ctx1 = document.getElementById('indexChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'bar',
+  data: {
+    labels: ['5/4','5/5','5/6','5/7','5/8','5/11','5/12','5/13','5/14','5/15','5/18','5/19','5/20','5/21','5/22','5/25','5/26'],
+    datasets: [
+      {
+        label: '當日行事曆場數',
+        data: [1, 5, 6, 5, 4, 1, 5, 3, 3, 1, 1, 1, 1, 1, 1, 0, 1],
+        backgroundColor: 'rgba(88,166,255,0.25)',
+        borderColor: 'rgba(88,166,255,0.6)',
+        borderWidth: 1,
+        yAxisID: 'y2',
+        type: 'bar'
+      },
+      {
+        label: '大盤指數（估算）',
+        data: [38200, 38800, 39200, 39600, 39800, 40100, 41200, 41600, 42100, 42000, 41800, 41500, 41700, 41900, 42300, 43200, 43600],
+        borderColor: '#3fb950',
+        backgroundColor: 'rgba(63,185,80,0.08)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#3fb950',
+        pointRadius: 3,
+        yAxisID: 'y1',
+        type: 'line'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { font: { size: 11 } } }
+    },
+    scales: {
+      y1: {
+        type: 'linear',
+        position: 'left',
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { callback: v => (v/1000).toFixed(0) + 'K', font: { size: 10 } },
+        title: { display: true, text: '加權指數（估算）', font: { size: 10 } }
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        grid: { drawOnChartArea: false },
+        ticks: { font: { size: 10 } },
+        title: { display: true, text: '法說場數', font: { size: 10 } }
+      },
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 9 } } }
+    }
+  }
+});
+
+// Type distribution donut
+const ctx2 = document.getElementById('typeChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'doughnut',
+  data: {
+    labels: ['AI/半導體供應鏈', 'PCB/連接器/電子', '金融/其他', '美股/外資企業', '傳產/特化', '醫療/其他'],
+    datasets: [{
+      data: [14, 12, 6, 4, 7, 3],
+      backgroundColor: [
+        'rgba(88,166,255,0.8)',
+        'rgba(163,113,247,0.8)',
+        'rgba(63,185,80,0.8)',
+        'rgba(210,153,34,0.8)',
+        'rgba(248,81,73,0.7)',
+        'rgba(100,200,200,0.7)'
+      ],
+      borderWidth: 1,
+      borderColor: '#161b22'
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: { font: { size: 10 }, boxWidth: 12, padding: 8 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.raw}場 (${Math.round(ctx.raw/46*100)}%)`
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

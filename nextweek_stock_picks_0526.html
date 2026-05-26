@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下週進場分析｜行事曆 × 市場事件</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  min-height: 100vh;
+  padding: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+h1 {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00, #f85149);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.subtitle { text-align: center; font-size: 0.78rem; color: #8b949e; margin-bottom: 20px; }
+
+/* Warning banner */
+.warning {
+  background: rgba(248,81,73,0.1);
+  border: 1px solid rgba(248,81,73,0.3);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  color: #f85149;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* Macro context */
+.macro-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.macro-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.macro-icon { font-size: 1.4rem; margin-bottom: 4px; }
+.macro-title { font-size: 0.72rem; font-weight: 700; color: #e6edf3; margin-bottom: 2px; }
+.macro-desc { font-size: 0.68rem; color: #8b949e; line-height: 1.5; }
+.macro-date { font-size: 0.65rem; color: #58a6ff; margin-top: 4px; font-weight: 600; }
+
+/* Stock cards */
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #e6edf3;
+  margin-bottom: 12px;
+  padding-left: 10px;
+  border-left: 3px solid #ffd700;
+}
+
+.stock-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.stock-card:hover { border-color: #58a6ff; }
+.stock-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px;
+  height: 100%;
+}
+.rank-s::before { background: linear-gradient(180deg, #ffd700, #ff8c00); }
+.rank-a::before { background: linear-gradient(180deg, #58a6ff, #3181c7); }
+.rank-b::before { background: linear-gradient(180deg, #3fb950, #2ea043); }
+
+.stock-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.stock-name { font-size: 1.05rem; font-weight: 800; color: #e6edf3; }
+.stock-code { font-size: 0.72rem; color: #8b949e; margin-top: 1px; }
+.rank-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.badge-s { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
+.badge-a { background: rgba(88,166,255,0.2); color: #58a6ff; border: 1px solid rgba(88,166,255,0.4); }
+.badge-b { background: rgba(63,185,80,0.2); color: #3fb950; border: 1px solid rgba(63,185,80,0.4); }
+
+.signal-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.signal-tag {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-weight: 600;
+}
+.tag-cal { background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid rgba(88,166,255,0.2); }
+.tag-news { background: rgba(163,113,247,0.15); color: #a371f7; border: 1px solid rgba(163,113,247,0.2); }
+.tag-theme { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.2); }
+.tag-risk { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.2); }
+.tag-momentum { background: rgba(63,185,80,0.15); color: #3fb950; border: 1px solid rgba(63,185,80,0.2); }
+
+.analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.75rem; }
+.analysis-item { }
+.analysis-label { color: #8b949e; font-size: 0.68rem; margin-bottom: 2px; }
+.analysis-value { color: #c9d1d9; line-height: 1.5; }
+
+.reason-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #1c2128;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: #c9d1d9;
+  border-left: 3px solid #30363d;
+}
+.reason-block strong { color: #e6edf3; }
+
+.caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: #d2993a;
+}
+
+/* Timeline bar */
+.week-timeline {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.tl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+}
+.tl-date { color: #58a6ff; font-weight: 700; width: 55px; flex-shrink: 0; }
+.tl-events { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+.tl-tag {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+.tl-cal { background: rgba(88,166,255,0.1); color: #58a6ff; border: 1px solid rgba(88,166,255,0.2); }
+.tl-big { background: rgba(255,215,0,0.1); color: #ffd700; border: 1px solid rgba(255,215,0,0.2); }
+.tl-macro { background: rgba(163,113,247,0.1); color: #a371f7; border: 1px solid rgba(163,113,247,0.2); }
+
+.divider { border: none; border-top: 1px solid #21262d; margin: 20px 0; }
+.footer { text-align: center; font-size: 0.65rem; color: #484f58; margin-top: 16px; }
+
+/* Score meter */
+.score-meter { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.meter-track { flex: 1; height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 3px; }
+.meter-s { background: linear-gradient(90deg, #ffd700, #ff8c00); }
+.meter-a { background: linear-gradient(90deg, #58a6ff, #3181c7); }
+.meter-b { background: linear-gradient(90deg, #3fb950, #2ea043); }
+.meter-label { font-size: 0.68rem; color: #8b949e; width: 30px; }
+
+.grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+</style>
+</head>
+<body>
+
+<h1>🎯 下週進場分析報告</h1>
+<p class="subtitle">行事曆法說 × COMPUTEX前夕市場事件｜2026年5月27日–6月4日</p>
+
+<div class="warning">
+  ⚠️ 本分析僅供研究參考，不構成投資建議。股市有風險，進場請自行評估並設定停損。
+</div>
+
+<!-- Macro Events Timeline -->
+<div class="week-timeline">
+  <div style="font-size:0.82rem; font-weight:700; color:#ffd700; margin-bottom:12px;">📅 下週重大事件時間軸</div>
+  <div class="tl-row">
+    <span class="tl-date">5/27 (三)</span>
+    <div class="tl-events">
+      <span class="tl-cal">中鋼(2002) 法說 [中信]</span>
+      <span class="tl-cal">正文(4906) 法說 [中信]</span>
+      <span class="tl-cal">朋億(6613) 法說 [群益]</span>
+      <span class="tl-big">和友(6826) 限3人★★★★</span>
+      <span class="tl-cal">大亞(1609) 法說 [華南]</span>
+    </div>
+  </div>
+  <div class="tl-row">
+    <span class="tl-date">5/28 (四)</span>
+    <div class="tl-events">
+      <span class="tl-big">🏆 富邦Q2投資論壇【君悅】</span>
+      <span class="tl-big">🍽️ AI兆元宴（台積電/鴻海/台達電）</span>
+      <span class="tl-cal">凱崴(5498) 限3人★★★★</span>
+      <span class="tl-cal">台勝科(3532) 法說 [華南]</span>
+      <span class="tl-cal">DIGITIMES×群益 Agentic AI 論壇</span>
+      <span class="tl-big">精測/雙鴻/群聯/力旺…小場</span>
+    </div>
+  </div>
+  <div class="tl-row">
+    <span class="tl-date">5/29 (五)</span>
+    <div class="tl-events">
+      <span class="tl-cal">飛捷(6206) 法說 [凱基]</span>
+      <span class="tl-cal">福懋(1434) 法說</span>
+      <span class="tl-cal">意藍資訊(6925) 實體</span>
+    </div>
+  </div>
+  <div class="tl-row">
+    <span class="tl-date">6/1 (一)</span>
+    <div class="tl-events">
+      <span class="tl-macro">🔥 黃仁勳 COMPUTEX 主題演講（北流）</span>
+    </div>
+  </div>
+  <div class="tl-row">
+    <span class="tl-date">6/2–6/4</span>
+    <div class="tl-events">
+      <span class="tl-macro">🖥️ COMPUTEX 2026 正式開展</span>
+      <span class="tl-cal">元大・群益 展覽導覽（3天）</span>
+      <span class="tl-cal">瑞聲科技(HK) 法說 [凱基]</span>
+    </div>
+  </div>
+</div>
+
+<!-- S Rank -->
+<div class="section-title">🥇 S級：強力訊號（行事曆+新聞+市場動能三重共振）</div>
+
+<!-- 雙鴻 -->
+<div class="stock-card rank-s">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">雙鴻 <span style="color:#8b949e; font-size:0.8rem;">液冷散熱龍頭</span></div>
+      <div class="stock-code">3017 ｜ 電子零組件</div>
+    </div>
+    <span class="rank-badge badge-s">S級首選</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 富邦小場 5/28</span>
+    <span class="signal-tag tag-theme">🖥️ COMPUTEX 液冷主題</span>
+    <span class="signal-tag tag-news">📰 分析師點名 COMPUTEX受惠</span>
+    <span class="signal-tag tag-momentum">🔥 AI伺服器散熱需求爆發</span>
+  </div>
+  <div class="analysis-grid">
+    <div class="analysis-item">
+      <div class="analysis-label">行事曆訊號</div>
+      <div class="analysis-value">富邦投資論壇小場（台北君悅），機構小圈子私下聚焦，代表法人正在積極了解訂單能見度</div>
+    </div>
+    <div class="analysis-item">
+      <div class="analysis-label">市場新聞催化</div>
+      <div class="analysis-value">COMPUTEX 2026 液冷/熱管散熱為三大核心展示主題，鴻海、廣達AI伺服器全面採用液冷方案</div>
+    </div>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-s" style="width:92%;"></div></div>
+    <span style="font-size:0.7rem; color:#ffd700;">92%</span>
+  </div>
+  <div class="reason-block">
+    <strong>進場邏輯：</strong>雙鴻為台灣散熱解決方案龍頭，主力產品涵蓋液冷板、均溫板、熱管模組。AI伺服器功耗急速攀升（GB200機架達120kW），傳統風冷已不敷使用，液冷需求呈指數型成長。富邦論壇小場為限額機構私訪，歷史上此類活動後股價多有正向反應。COMPUTEX展期資金卡位效應可延續至6/5。
+    <div class="caution">⚠️ 留意：5月已有漲幅，建議分批進場，設停損於近期低點</div>
+  </div>
+</div>
+
+<!-- 精測 -->
+<div class="stock-card rank-s">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">精測 <span style="color:#8b949e; font-size:0.8rem;">半導體測試介面</span></div>
+      <div class="stock-code">6510 ｜ 半導體相關</div>
+    </div>
+    <span class="rank-badge badge-s">S級首選</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 富邦論壇C廳 5/28</span>
+    <span class="signal-tag tag-cal">📅 富邦小場 5/28</span>
+    <span class="signal-tag tag-theme">🖥️ AI晶片測試需求</span>
+    <span class="signal-tag tag-news">📰 AI晶片訂單能見度高</span>
+  </div>
+  <div class="analysis-grid">
+    <div class="analysis-item">
+      <div class="analysis-label">行事曆訊號</div>
+      <div class="analysis-value">罕見「雙重出席」——既在論壇主場C廳演講，又安排小場私訪，顯示公司主動積極與法人溝通，透明度高</div>
+    </div>
+    <div class="analysis-item">
+      <div class="analysis-label">市場新聞催化</div>
+      <div class="analysis-value">AI晶片設計越趨複雜，測試介面（Socket）需求劇增；H100→B200→GB300每代升級均需更新測試介面，精測為最大受惠者</div>
+    </div>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-s" style="width:88%;"></div></div>
+    <span style="font-size:0.7rem; color:#ffd700;">88%</span>
+  </div>
+  <div class="reason-block">
+    <strong>進場邏輯：</strong>主場+小場雙重法說是強烈訊號，通常代表公司有重要訊息要傳遞（如大客戶訂單確認、毛利率改善）。精測受惠COMPUTEX前法人卡位效應，加上台積電2nm進入量產後，CoWoS先進封裝測試介面需求倍增，下半年訂單能見度佳。
+    <div class="caution">⚠️ 留意：股本較小，流動性有限，大量進場需注意滑價</div>
+  </div>
+</div>
+
+<hr class="divider">
+<!-- A Rank -->
+<div class="section-title">🥈 A級：訊號明確（行事曆+主題雙重支撐）</div>
+
+<div class="grid-two">
+
+<!-- 群聯 -->
+<div class="stock-card rank-a">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">群聯</div>
+      <div class="stock-code">8299｜Flash控制IC</div>
+    </div>
+    <span class="rank-badge badge-a">A級</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 富邦論壇A廳 5/28</span>
+    <span class="signal-tag tag-theme">🖥️ AI邊緣存儲</span>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-a" style="width:80%;"></div></div>
+    <span style="font-size:0.7rem; color:#58a6ff;">80%</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    Flash控制晶片龍頭，AI伺服器SSD、AIPC儲存需求爆發。富邦論壇A廳主場演講，預期釋出H2訂單展望。COMPUTEX AI PC主題直接受惠。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 本益比已高，留意獲利了結</div>
+  </div>
+</div>
+
+<!-- 凱崴 -->
+<div class="stock-card rank-a">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">凱崴</div>
+      <div class="stock-code">5498｜工業電腦/機器人</div>
+    </div>
+    <span class="rank-badge badge-a">A級★★★★</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 公司拜訪 限3人 5/28</span>
+    <span class="signal-tag tag-theme">🤖 Physical AI</span>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-a" style="width:78%;"></div></div>
+    <span style="font-size:0.7rem; color:#58a6ff;">78%</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    限額3人公司拜訪（★★★★）是強烈機構卡位訊號。COMPUTEX 2026「Physical AI/機器人」為三大主軸之一，工業電腦/機器人控制器將是展場焦點。凱崴產品直接受惠機器人題材發酵。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 機器人題材短線波動較大</div>
+  </div>
+</div>
+
+<!-- 力旺 -->
+<div class="stock-card rank-a">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">力旺</div>
+      <div class="stock-code">3529｜NVM IP矽智財</div>
+    </div>
+    <span class="rank-badge badge-a">A級</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 富邦論壇D廳 5/28</span>
+    <span class="signal-tag tag-theme">🔌 AI晶片內嵌記憶</span>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-a" style="width:75%;"></div></div>
+    <span style="font-size:0.7rem; color:#58a6ff;">75%</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    NVM嵌入式記憶體IP授權，AI ASIC晶片（NPU、EdgeAI晶片）大量採用，屬輕資產高毛利商業模式。台積電客戶越多→力旺IP授權越多，受惠COMPUTEX前AI晶片設計熱潮。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 股價較高，注意短線位置</div>
+  </div>
+</div>
+
+<!-- 台勝科 -->
+<div class="stock-card rank-a">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">台勝科</div>
+      <div class="stock-code">3532｜半導體矽晶圓</div>
+    </div>
+    <span class="rank-badge badge-a">A級</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 法說 5/28 [華南永昌]</span>
+    <span class="signal-tag tag-momentum">🔥 矽晶圓漲價預期</span>
+  </div>
+  <div class="score-meter">
+    <span class="meter-label">信心</span>
+    <div class="meter-track"><div class="meter-fill meter-a" style="width:72%;"></div></div>
+    <span style="font-size:0.7rem; color:#58a6ff;">72%</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    矽晶圓供需趨緊，法說將確認Q2訂單能見度及下半年價格走勢。AI伺服器帶動大尺寸矽晶圓需求，台勝科為國內主要供應商之一。法說後若給正向展望，股價催化效果明顯。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 法說前後為進出場窗口</div>
+  </div>
+</div>
+
+</div>
+
+<hr class="divider">
+<!-- B Rank -->
+<div class="section-title">🥉 B級：值得觀察（具題材但時間點需確認）</div>
+
+<div class="grid-two">
+
+<!-- 中鋼 -->
+<div class="stock-card rank-b">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">中鋼</div>
+      <div class="stock-code">2002｜鋼鐵</div>
+    </div>
+    <span class="rank-badge badge-b">B級</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 法說 5/27 [中信]</span>
+    <span class="signal-tag tag-momentum">🔥 外資5/25大買超</span>
+    <span class="signal-tag tag-news">📰 台股新高傳產輪動</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    台股新高行情中傳產輪動受惠股。外資上週大買，法說可望確認鋼價走勢與出口訂單，若法說樂觀有機會延續漲勢。但需注意鋼鐵股對全球景氣高度敏感。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 傳產題材波動較小，適合短線操作</div>
+  </div>
+</div>
+
+<!-- 緯創 -->
+<div class="stock-card rank-b">
+  <div class="stock-header">
+    <div>
+      <div class="stock-name">緯創</div>
+      <div class="stock-code">3231｜AI伺服器組裝</div>
+    </div>
+    <span class="rank-badge badge-b">B級</span>
+  </div>
+  <div class="signal-row">
+    <span class="signal-tag tag-cal">📅 富邦小場 5/28</span>
+    <span class="signal-tag tag-theme">🖥️ COMPUTEX伺服器</span>
+  </div>
+  <div class="reason-block" style="font-size:0.72rem;">
+    AI伺服器代工，鴻海題材外溢效益。高盛點名COMPUTEX受惠名單。富邦小場私訪代表法人確認訂單展望。COMPUTEX展期間資金有機會輪到中小型伺服器廠。
+    <div class="caution" style="font-size:0.68rem;">⚠️ 已漲一波，注意上檔壓力</div>
+  </div>
+</div>
+
+</div>
+
+<hr class="divider">
+
+<!-- Strategy summary -->
+<div style="background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; margin-bottom:16px;">
+  <div style="font-size:0.85rem; font-weight:700; color:#ffd700; margin-bottom:12px;">📋 操作策略總結</div>
+  <div style="font-size:0.77rem; line-height:1.9; color:#c9d1d9;">
+    <div style="margin-bottom:6px;">
+      <span style="color:#ffd700; font-weight:700;">▶ 進場時機：</span>
+      本週（5/27–5/29）法說前後為最佳窗口。5/28富邦論壇當天為資訊最密集時點，法說後若展望正向，可在尾盤或隔日確認方向後進場。
+    </div>
+    <div style="margin-bottom:6px;">
+      <span style="color:#58a6ff; font-weight:700;">▶ 核心邏輯：</span>
+      COMPUTEX 6/2登場，行情卡位通常在展前1–2週開始，展中維持，展後約3–5日出現「利多出盡」現象。雙鴻、精測屬展前佈局；6/5後需留意獲利了結。
+    </div>
+    <div style="margin-bottom:6px;">
+      <span style="color:#3fb950; font-weight:700;">▶ 分散配置：</span>
+      S級（雙鴻+精測）建議合計佔倉位60%，A級（群聯/凱崴擇一）佔30%，B級觀察為主佔10%，避免過度集中單一標的。
+    </div>
+    <div>
+      <span style="color:#f85149; font-weight:700;">▶ 風險提示：</span>
+      台股已在43,000高位，COMPUTEX若無超預期利多，「利多出盡」賣壓將於6/5後顯現。設定個股停損約 -7%，或以法說當週低點為參考。
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  資料來源：Google Calendar行事曆 · 經濟日報 · 工商時報 · MoneyDJ · 鉅亨網 · Yahoo股市<br>
+  本報告依行事曆事件與公開新聞資訊產出，僅供研究參考，不構成任何投資建議，投資需自負盈虧。
+</div>
+
+</body>
+</html>
